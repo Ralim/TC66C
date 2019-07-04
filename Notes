@@ -1,0 +1,19 @@
+Notes:
+Service: "0000ffe5-0000-1000-8000-00805f9b34fb"
+Char: "0000ffe9-0000-1000-8000-00805f9b34fb"
+
+Is the command Rx slot
+
+Sending:
+
+    "626e657874700d0a" is Next Page
+    "626c617374700d0a" is previous Page
+    "62726f7461740d0a" is rotate screen
+    "6267657476610d0a" is "Device Notify" -> Causes the dongle to send back a burst of data
+
+Service : "0000ffe0-0000-1000-8000-00805f9b34fb"
+Char    : "0000ffe4-0000-1000-8000-00805f9b34fb"
+
+This is the Rx Data from the dongle
+It is sent as a notification even if you haven't enabled these officially :D
+
