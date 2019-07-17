@@ -1,6 +1,8 @@
+#!/usr/bin/env python3
 from bluepy.btle import Scanner, DefaultDelegate, Peripheral
 from time import sleep
 from Crypto.Cipher import AES
+import itertools
 
 
 class ScanDelegate(DefaultDelegate):
@@ -23,15 +25,12 @@ class MyDelegate(DefaultDelegate):
         DefaultDelegate.__init__(self)
 
     def handleNotification(self, cHandle, data):
-        # ... perhaps check cHandle
-        # ... process 'data'
         IncomingDataBuffer.extend(data)
-        print(f'Recieved {len(data)} bytes')
 
 
 def scanAndFind():
     scanner = Scanner().withDelegate(ScanDelegate())
-    devices = scanner.scan(4.0)
+    devices = scanner.scan(1.0)
 
     for dev in devices:
         if (dev.connectable):
@@ -39,39 +38,74 @@ def scanAndFind():
             if devName == "TC66C":
                 print("Found Device %s - [%s] (%s), RSSI=%d dB" %
                       (devName, dev.addr, dev.addrType, dev.rssi))
-                for (adtype, desc, value) in dev.getScanData():
-                    print("[%s]  %s = %s" % (adtype, desc, value))
+                # for (adtype, desc, value) in dev.getScanData():
+                #     print("[%s]  %s = %s" % (adtype, desc, value))
                 return Peripheral(dev)
 
 
 def decrypt(data):
-    if len(data) != 192:
-        return None
-    AESKey = b'X!\xf9V\x01\xb1\xef&\x86\xfe\x12\x04b*O\xaf\x85\xf3\x02`\x80o\x99\x0b\xa6\xf0\x06a\x99\xb7r\x87'
-    cipher = AES.new(AESKey, AES.MODE_ECB)
+    AESKeySource = [
+        0x58, 0x21, -0x6, 0x56, 0x1, -0x4e, -0x10, 0x26, -0x79, -0x1, 0x12,
+        0x4, 0x62, 0x2a, 0x4f, -0x50, -0x7a, -0xc, 0x2, 0x60, -0x7f, 0x6f,
+        -0x66, 0xb, -0x59, -0xf, 0x6, 0x61, -0x66, -0x48, 0x72, -0x78
+    ]
+
+    AESKey = []
+    for b in AESKeySource:
+        AESKey.append(b & 0xFF)  # Handle negative numbers
+    AESKey = bytes(AESKey)
+    cipher = AES.new(bytes(AESKey), AES.MODE_ECB)
     rawData = cipher.decrypt(bytes(data))
     return rawData
 
 
-def decodeDataBuffer(inputBuffer):
-    while len(inputBuffer) >= 192:
-        #decode the readings
-        buffer = inputBuffer[0:193:1]
-        inputBuffer = inputBuffer[193::]
-        aesIV = ""
-        for i in range(48, 64):
-            aesIV = aesIV + "%2.2X" % buffer[i]
-        decodedData = decrypt(buffer)
-        print(decodedData)
+def printHex(array):
+    output = 'Hex: '
+    for b in array:
+        output = output + '%2.2X' % b
+    print(output)
 
-        sleep(0.5)
+
+def handleDataPacket(data):
+    if (data[0] == 112):
+        voltageReading = int.from_bytes(data[48:48 + 4:1], "little")
+        voltageReading = float(voltageReading) / 10000
+        print(f'V In : {voltageReading}')
+    # else :
+    #     print(data[0])
+    #     print(data[1])
+    #     print(data[2])
+    #     print(data[3])
+
+
+def decodeDataBuffer(IncomingDataBuffer):
+    while len(IncomingDataBuffer) >= 192:
+        #decode the readings
+        buffer = IncomingDataBuffer[0:192]  # grab the first 192
+        searchpattern = [112, 97, 99, 49]
+        aeskeything = buffer[48:64]
+        # printHex(aeskeything)
+        decodedData = decrypt(buffer)
+
+        # First 4 bytes of the message are always 'pac1'
+        # This is hinted by a consant of 'pac1TC66' in the apk
+        if (decodedData[0] == 112 and decodedData[1] == 97 and decodedData[2] == 99 and decodedData[3] == 49):
+            
+            handleDataPacket(decodedData)
+            IncomingDataBuffer = IncomingDataBuffer[192:]
+        else:
+            IncomingDataBuffer = IncomingDataBuffer[1:]
+    return IncomingDataBuffer
 
 
 # Main
-SlaveDevice = scanAndFind()
+SlaveDevice = None
+while SlaveDevice is None:
+    SlaveDevice = scanAndFind()
+
 if SlaveDevice is not None:
     print('Connected')
-    SlaveDevice.setMTU(250)
+    SlaveDevice.setMTU(200)
     services = SlaveDevice.getServices()
     # To enable the data streaming through from the device, is actually a polling loop /me facepalms
     # They dont actually use notifications for anything useful except as a slightly lower delay read
@@ -96,12 +130,17 @@ if SlaveDevice is not None:
     print(rotateScreen)
     print(ForwScreen)
     print(AskForData)
+    print(bytearray.fromhex(
+        '706163315443363631'))  # This appears to be the message marker?
+
     while True:
         print('Polling')
-        devWriteChar.write(AskForData, True)  #rotate screen
-        SlaveDevice.waitForNotifications(0.5)
-        SlaveDevice.waitForNotifications(0.5)
-        sleep(0.5)
-        decodeDataBuffer(IncomingDataBuffer)
+        devWriteChar.write(AskForData,
+                           True)  #Ask for data to be sent in a notification
+        while (len(IncomingDataBuffer) < 192):
+            SlaveDevice.waitForNotifications(0.2)
+
+        IncomingDataBuffer = decodeDataBuffer(IncomingDataBuffer)
+
 else:
     print('No Devices Found')
