@@ -67,25 +67,39 @@ def printHex(array):
 
 
 def handleDataPacket(data):
-
-    voltageReading = int.from_bytes(data[48:48 + 4:1], "little")
-    voltageReading = float(voltageReading) / 10000
-    currentReading = int.from_bytes(data[52:52 + 4:1], "little")
-    currentReading = float(currentReading) / 100000
-    wattsReading = int.from_bytes(data[56:56 + 4:1], "little")
-    wattsReading = float(wattsReading) / 10000
-    ohmsReading = int.from_bytes(data[68:68 + 4:1], "little")
-    ohmsReading = float(ohmsReading) / 10
-    mAhReading = int.from_bytes(data[72:72 + 4:1], "little")
-    mAhReading = float(mAhReading) / 10000
-    mWhReading = int.from_bytes(data[76:76 + 4:1], "little")
-    mWhReading = float(mWhReading) / 10000
-    mAhReading2 = int.from_bytes(data[80:80 + 4:1], "little")
-    mAhReading2 = float(mAhReading2) / 10000
-    mWhReading2 = int.from_bytes(data[84:84 + 4:1], "little")
-    mWhReading2 = float(mWhReading2) / 10000
+    # Thing to note is that all data is send as int32_t's packed end to end
+    # I propose that their firmware is using a C packed struct and they are dumping it out directly
+    RawReadings=[]
+    for index in range(48,85,4):
+        # Unpack an int from here
+        value = int.from_bytes(data[index:index+4:1],"little")
+        RawReadings.append(value)
+    # Index's that are known so far:
+    # Array Index, Byte index, Name, Format
+    # 00  -> 48   -> Voltage  -> mV*10000
+    # 01  -> 52   -> Current  -> mA*100000
+    # 02  -> 56   -> Watts    -> W*10000
+    # 03  -> 60   -> ??
+    # 04  -> 64   -> ??
+    # 05  -> 68   -> Ohms     -> Ohms*10
+    # 06  -> 72   -> mAh 0    -> mAh
+    # 07  -> 76   -> mWh 0    -> mWh
+    # 08  -> 80   -> mAh 1    -> mAh
+    # 09  -> 84   -> mWh 1    -> mWh
     
-    print(f'V: {voltageReading}\tI: {currentReading}\tW: {wattsReading}\tO: {ohmsReading}')
+    voltage = float(RawReadings[0])/10000
+    current = float(RawReadings[1])/100000
+    power   = float(RawReadings[2])/10000
+
+
+    ohms    = float(RawReadings[5])/10
+    mAh0    = float(RawReadings[6])
+    mWh0    = float(RawReadings[7])
+    mAh1    = float(RawReadings[8])
+    mWh1    = float(RawReadings[9])
+    
+    
+    print(f'V: {voltage}\tI: {current}\tW: {power}\tΩ: {ohms}\tmAh: {mAh0}\tmWh: {mWh0}\tmAh: {mAh1}\tmWh: {mWh1}')
     
 
 
