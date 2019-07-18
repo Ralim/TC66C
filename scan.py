@@ -67,15 +67,26 @@ def printHex(array):
 
 
 def handleDataPacket(data):
-    if (data[0] == 112):
-        voltageReading = int.from_bytes(data[48:48 + 4:1], "little")
-        voltageReading = float(voltageReading) / 10000
-        print(f'V In : {voltageReading}')
-    # else :
-    #     print(data[0])
-    #     print(data[1])
-    #     print(data[2])
-    #     print(data[3])
+
+    voltageReading = int.from_bytes(data[48:48 + 4:1], "little")
+    voltageReading = float(voltageReading) / 10000
+    currentReading = int.from_bytes(data[52:52 + 4:1], "little")
+    currentReading = float(currentReading) / 100000
+    wattsReading = int.from_bytes(data[56:56 + 4:1], "little")
+    wattsReading = float(wattsReading) / 10000
+    ohmsReading = int.from_bytes(data[68:68 + 4:1], "little")
+    ohmsReading = float(ohmsReading) / 10
+    mAhReading = int.from_bytes(data[72:72 + 4:1], "little")
+    mAhReading = float(mAhReading) / 10000
+    mWhReading = int.from_bytes(data[76:76 + 4:1], "little")
+    mWhReading = float(mWhReading) / 10000
+    mAhReading2 = int.from_bytes(data[80:80 + 4:1], "little")
+    mAhReading2 = float(mAhReading2) / 10000
+    mWhReading2 = int.from_bytes(data[84:84 + 4:1], "little")
+    mWhReading2 = float(mWhReading2) / 10000
+    
+    print(f'V: {voltageReading}\tI: {currentReading}\tW: {wattsReading}\tO: {ohmsReading}')
+    
 
 
 def decodeDataBuffer(IncomingDataBuffer):
