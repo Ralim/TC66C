@@ -70,7 +70,7 @@ def handleDataPacket(data):
     # Thing to note is that all data is send as int32_t's packed end to end
     # I propose that their firmware is using a C packed struct and they are dumping it out directly
     RawReadings=[]
-    for index in range(48,85,4):
+    for index in range(48,101,4):
         # Unpack an int from here
         value = int.from_bytes(data[index:index+4:1],"little")
         RawReadings.append(value)
@@ -86,20 +86,31 @@ def handleDataPacket(data):
     # 07  -> 76   -> mWh 0    -> mWh
     # 08  -> 80   -> mAh 1    -> mAh
     # 09  -> 84   -> mWh 1    -> mWh
-    
-    voltage = float(RawReadings[0])/10000
-    current = float(RawReadings[1])/100000
-    power   = float(RawReadings[2])/10000
-
-
-    ohms    = float(RawReadings[5])/10
-    mAh0    = float(RawReadings[6])
-    mWh0    = float(RawReadings[7])
-    mAh1    = float(RawReadings[8])
-    mWh1    = float(RawReadings[9])
+    # 10  -> 88   -> Temp flag-> 1= -ve temp, 0=+ve temp
+    # 11  -> 92   -> Temp     -> Deg C
+    # 12  -> 96   -> D+ Volt  -> V*100
+    # 13  -> 100  -> D- Volt  -> V*100
     
     
-    print(f'V: {voltage}\tI: {current}\tW: {power}\tΩ: {ohms}\tmAh: {mAh0}\tmWh: {mWh0}\tmAh: {mAh1}\tmWh: {mWh1}')
+    voltage         = float(RawReadings[0])/10000
+    current         = float(RawReadings[1])/100000
+    power           = float(RawReadings[2])/10000
+    # 3?
+    # 4?
+    ohms            = float(RawReadings[5])/10
+    mAh0            = float(RawReadings[6])
+    mWh0            = float(RawReadings[7])
+    mAh1            = float(RawReadings[8])
+    mWh1            = float(RawReadings[9])
+    tempFlag        = float(RawReadings[10])
+    temperature     = float(RawReadings[11])
+    dataPlus        = float(RawReadings[12])/100
+    dataMinus       = float(RawReadings[13])/100
+    
+    if(tempFlag==1):
+        temperature=-temperature
+    
+    print(f'V: {voltage}\tI: {current}\tW: {power}\tΩ: {ohms}\tmAh: {mAh0}\tmWh: {mWh0}\tmAh: {mAh1}\tmWh: {mWh1}\tTemp: {temperature}\tD+: {dataPlus}\tD-: {dataMinus}')
     
 
 
