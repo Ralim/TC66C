@@ -69,6 +69,16 @@ def printHex(array):
 def handleDataPacket(data):
     # Thing to note is that all data is send as int32_t's packed end to end
     # I propose that their firmware is using a C packed struct and they are dumping it out directly
+    # first 4 are the chars "pac1"
+    # followed by the model "TC66"
+    # followed by 4 digits for the firmware version as a string
+    # The data between 12-47 inclusive is unknown at the moment
+    # Data that is expected but not found : 
+    # -> Runtime counter
+    # -> Uptime of this run
+    # -> Serial Number
+    # -> Detected protocol
+    # -> Means of changing settings
     RawReadings=[]
     for index in range(48,101,4):
         # Unpack an int from here
